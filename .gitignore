@@ -65,3 +65,7 @@ cdk.out/
 .stack-work
 *.hi
 *.o
+
+# Vagrant
+**/.vagrant
+
