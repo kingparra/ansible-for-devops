@@ -1,0 +1,30 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+
+    - name: Install EPEL repo
+      dnf: name=epel-release state=present
+
+    - name: Import remi gpg key
+      rpm_key:
+        key: "https://rpms.remirepo.net/RPM-GPG-KEY-remi2018"
+
+    - name: Install remi repo
+      dnf:
+        name: "https://rpms.remirepo.net/enterprise/remi-release-8.rpm"
+        state: present
+
+    - name: Install nodejs and npm
+      dnf:
+        name: npm
+        state: present
+        enablerepo: epel
+
+    - name: Install forever
+      npm:
+        name: forever
+        global: yes
+        state: present
+
