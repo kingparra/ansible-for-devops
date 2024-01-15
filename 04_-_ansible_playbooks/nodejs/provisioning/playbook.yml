@@ -2,29 +2,59 @@
 - hosts: all
   become: yes
 
+  vars:
+    node_apps_location: /usr/local/opt/node
+
+  # vars_files: [...]
+  # vars_prompt: [...]
   tasks:
-
-    - name: Install EPEL repo
-      dnf: name=epel-release state=present
-
-    - name: Import remi gpg key
-      rpm_key:
-        key: "https://rpms.remirepo.net/RPM-GPG-KEY-remi2018"
-
-    - name: Install remi repo
-      dnf:
-        name: "https://rpms.remirepo.net/enterprise/remi-release-8.rpm"
-        state: present
 
     - name: Install nodejs and npm
       dnf:
-        name: npm
+        name:
+          - nodejs
+          - npm
         state: present
-        enablerepo: epel
+
+    - name: Stop firewalld
+      systemd:
+        name: firewalld
+        state: stopped
+
+    - name: Ensure nodejs app folder exists
+      file:
+        path: "{{ node_apps_location }}"
+        state: directory
+
+    - name: Copy example nodejs app to server
+      copy:
+        src: app
+        dest: "{{ node_apps_location }}"
+
+    - name: Install app dependencies defined in package.json
+      npm:
+        path: "{{ node_apps_location }}/app"
 
     - name: Install forever
+      tags: forever
       npm:
         name: forever
         global: yes
         state: present
+
+    - name: Check list of running nodejs apps
+      tags: forever
+      command: /usr/local/bin/forever list
+      # assign output of task to forever_list
+      # registered variables are only in scope for the current playbook run
+      # https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html
+      # In general, Ansible gives precedence to variables that were defined
+      # more recently, more actively, and with more explicit scope.
+      register: forever_list
+      changed_when: false
+
+    - name: Start example Node.js app.
+      command: "/usr/local/bin/forever start {{ node_apps_location }}/app/app.js"
+      # https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_conditionals.html#playbooks-conditionals
+      when: "forever_list.stdout.find(node_apps_location + '/app/app.js') == -1"
 
