@@ -211,6 +211,10 @@ Accessing a registered variable::
 
   # Dicts/Objects
   ###############
+  # There are two ways to access sub-elements in Jinja
+  # and both of them will return either an attribute or
+  # dict item, it doesn't matter which.
+
   # If you use the attribute reference operator, the attribute name
   # must be a valid identifier (no special chars), and cannot be a dunder.
   # Dunders are names like __init__, __mult__, or __whatever_maann__.
@@ -411,13 +415,18 @@ Generally, I would prefer to use roles, but import/include may be useful some da
 
 Conditionals - if/then/when
 ---------------------------
-::
 
-  # task level
+The when keywords
+^^^^^^^^^^^^^^^^^
+You can use these keywords in a task::
+
   when          # when to run a task
   changed_when  # when to consider a task as changed status
   failed_when   # when to consider a task as failed status
+  ignore_errors
 
+Creating expressions for when
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 You can use python operators within tests like when::
 
   == != >= <=
@@ -450,8 +459,48 @@ Ansible also provides functions through plugins::
   vars:
     file_contents: "{{ lookup('file', 'path/to/file.txt') }}"
 
+A sidebar about transforming values
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Can you register an transform a variable in one step?
 For example, can you take a return value from shell
 and gets the ``.stdout`` attribute, then assign that
 to a registered var named output in one step?
+
+No, but there is a feature proposal for projection,
+which seems to do just that. It doesn't look like
+anyone is actively working on it.
+
+https://github.com/ansible/ansible/pull/72553
+
+Selection constructs in jinja
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
+
+  ---
+  - name: set fact/case example
+    hosts: localhost
+    tasks:
+
+      - set_fact:
+          one:   hello
+          two:   "{{ ansible_domain }}"
+          three: "{{ ansible_distribution_file_variety }}"
+          DC: >
+            {% if ansible_domain == 'eu-west-1.compute.internal' %}DC1
+            {% elif ansible_domain == 'eu-west-2.compute.internal' %}DC2
+            {% else %}DC3{% endif %}
+
+      - name: dc
+        debug:
+          msg: Your DC is {{ DC }}
+        when: DC == 'DC2'
+
+      - name: combine
+        debug:
+          msg: "{{ one }}-{{ two }}-{{ three }}-{{ DC }}"
+
+..
+  {% ... %} statements
+  {{ ... }} expressions
+  {# ... #} comments
 
