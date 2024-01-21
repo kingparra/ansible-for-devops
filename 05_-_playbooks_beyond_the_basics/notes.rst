@@ -112,20 +112,6 @@ Variables
 The goal of this section is to show many examples of setting and retrieving
 variable values, in varous different locations.
 
-You can set variables in at least 22 different
-locations. How do you know which variable definition
-takes precedence?
-
-In general, Ansible gives precedence to variables that
-were defined more recently, more actively, and with
-more explicit scope.
-
-Ansible has three main scopes:
-
-* Global: this is set by config, environment vars, and the cli.
-* Play: each play and contained structures, var entries, role defaults and vars.
-* Host: vars directly associated to a host, like inventory, includ_vars, facts or registered task outputs.
-
 Command-line::
 
   ansible-playbook example.yaml --extra-vars "foo=bar"
@@ -336,3 +322,83 @@ in a special directory on the remote host, ``/etc/ansible/facts.d/``.
       "changed": false
   }
 
+
+Vault
+-----
+Let's say we have an inventory that looks like this::
+
+  ---
+  hosts: all
+  vars_files:
+    - api_key.yaml
+  tasks:
+    - name: Echo API key.
+      shell: echo "$API_KEY"
+      environment:
+        API_KEY: "{{ myapp_api_key }}"
+      register: echo_result
+    - name: Show the result.
+      debug:
+        var: echo_result.stdout
+
+And a file named api_key.yaml that looks like this::
+
+  ---
+  myapp_api_key: "asdfaaaaasdf"
+
+To encrypt it, we can use ``ansible-vault encrypt $x``.
+Then, to use it with the playbook, we can run::
+
+  $ ansible-playbook playbook.yaml --ask-vault-pass
+
+(You can use ``-J`` for short.)
+
+Some other useful vault commands::
+
+  $ ansible-vault edit $x
+  $ ansible-vault view $x
+  $ ansible-vault encrypt_string $x
+
+For automated playbook runs, you can supply the
+password from a file. This is also a long-lived
+secret, so don't check it into vcs.
+
+::
+
+  ∿ echo 'abcd' > vault_pass.txt
+  ∿ ansible-vault view --vault-password-file=vault_pass.txt api_key.yaml
+
+
+Variable precedence
+-------------------
+You can set variables in at least 22 different locations. That's too much to
+remember. How do you know which variable definition takes precedence?
+
+In general, Ansible gives precedence to variables that were defined more
+recently, more actively, and with more explicit scope.
+
+Here are a few rules-of-thumb for where to set variables:
+
+* Roles should provide sane default values via the fole's ``defaults`` variables.
+  These are the fallback.
+
+* Playbooks should rarely define variables, prefer ``vars_files`` or leff often inventory.
+
+* Only truly host/group specific variables should be defined in host/group inventories.
+
+* Dynamic and static inventory sources should contain a minimum of variables.
+
+* Command-line variables should be avoided when possible. Use it only for one-offs.
+
+docs https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html
+
+
+Breaking tasks into separate files
+----------------------------------
+There are a few tools you can use to split up tasks:
+
+* ``import_tasks`` static, like import in Haskell.
+* ``include_tasks`` dynamic, like include in C, or source in Bash.
+* roles
+
+Generally, I would prefer to use roles, but import/include may be useful some day.
