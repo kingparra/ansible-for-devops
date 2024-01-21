@@ -287,3 +287,52 @@ overrides the third value:
   ...
 
 The value for path is merged by ``<<`` or merge operator.
+
+
+Facts (variables derived from system information)
+-------------------------------------------------
+Ansible facts are data related to your remote systems, including operating
+systems, IP addresses, attached filesystems, and more.
+
+To see all facts, run ``ansible -m setup``.
+
+You can access this data in the ``ansible_facts`` variable.
+
+If you don't need facts, and would like to save a few seconds per host,
+you can turn them off with::
+
+  ---
+  - hosts: db
+    gather_facts: no
+
+
+Local facts (facts.d)
+---------------------
+Another way to define host-specific facts is to place a ``*.fact`` file
+in a special directory on the remote host, ``/etc/ansible/facts.d/``.
+
+::
+
+  # /etc/ansible/facts.d/settings.fact
+
+  [users]
+  admin=jane,john
+  normal=jim
+
+  # notice the filter argument
+
+  $ ansible hostname -m setup -a "filter=ansible_local"
+  munin.midwesternmac.com | success >> {
+      "ansible_facts": {
+          "ansible_local": {
+              "settings": {
+                  "users": {
+                      "admin": "jane,john",
+                      "normal": "jim"
+                  }
+              }
+          }
+      },
+      "changed": false
+  }
+
