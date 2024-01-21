@@ -371,26 +371,31 @@ secret, so don't check it into vcs.
 
 Variable precedence
 -------------------
-You can set variables in at least 22 different locations. That's too much to
-remember. How do you know which variable definition takes precedence?
+You can set variables in at least 22 different locations.
+That's too much to remember.
+How do you know which variable definition takes precedence?
 
-In general, Ansible gives precedence to variables that were defined more
-recently, more actively, and with more explicit scope.
+In general, Ansible gives precedence to variables that
+were defined more recently, more actively, and with
+more explicit scope.
 
-Here are a few rules-of-thumb for where to set variables:
+Here is an abbreviated version of the precedence rules, to give you an idea:
+**-e > include params > role params > task > block > playbook > inventory > role defaults**.
+
+.. Use g<C-a> to increment a column of numbers in Vim.
+
+Where should you set variables when you're writing code?
 
 * Roles should provide sane default values via the fole's ``defaults`` variables.
   These are the fallback.
 
-* Playbooks should rarely define variables, prefer ``vars_files`` or leff often inventory.
+* Playbooks should rarely define variables, prefer ``vars_files``, or less often, inventory.
 
 * Only truly host/group specific variables should be defined in host/group inventories.
 
 * Dynamic and static inventory sources should contain a minimum of variables.
 
 * Command-line variables should be avoided when possible. Use it only for one-offs.
-
-docs https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html
 
 
 Breaking tasks into separate files
@@ -402,3 +407,51 @@ There are a few tools you can use to split up tasks:
 * roles
 
 Generally, I would prefer to use roles, but import/include may be useful some day.
+
+
+Conditionals - if/then/when
+---------------------------
+::
+
+  # task level
+  when          # when to run a task
+  changed_when  # when to consider a task as changed status
+  failed_when   # when to consider a task as failed status
+
+You can use python operators within tests like when::
+
+  == != >= <=
+  and or not
+
+Here's how you set variables as mandatory or optional.
+This relies on functions provided by Jinja2::
+
+  varname | mandatory      # make var mandatory
+  varname | default(omit)  # make var optional
+  varname | default(5)     # set default value if undefined
+  varname is defined       # check if defined
+
+Jinja2 provides a lot of functions, and you can
+encode complicated logic in it if you want::
+
+  # pretty print and convert to yaml
+  varname | to_nice_yaml(indent=2, width=99999
+
+  # find all matches
+  'CAR\ntar\nfoo\nbar\n' | regex_findall('^.ar$', multiline=True, ignorecase=True)
+
+  # change "ansible" to "able"
+  'ansible' | regex_replace('^a.*i(.*)$', 'a\\1')
+
+Docs here https://jinja.palletsprojects.com/en/3.1.x/templates/#builtin-filters
+
+Ansible also provides functions through plugins::
+
+  vars:
+    file_contents: "{{ lookup('file', 'path/to/file.txt') }}"
+
+Can you register an transform a variable in one step?
+For example, can you take a return value from shell
+and gets the ``.stdout`` attribute, then assign that
+to a registered var named output in one step?
+
