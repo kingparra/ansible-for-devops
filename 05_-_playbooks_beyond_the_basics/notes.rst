@@ -485,10 +485,15 @@ Selection constructs in jinja
           one:   hello
           two:   "{{ ansible_domain }}"
           three: "{{ ansible_distribution_file_variety }}"
+          # the -%} strips whitespace
           DC: >
-            {% if ansible_domain == 'eu-west-1.compute.internal' %}DC1
-            {% elif ansible_domain == 'eu-west-2.compute.internal' %}DC2
-            {% else %}DC3{% endif %}
+            {% if ansible_domain == 'eu-west-1.compute.internal' -%}
+              DC1
+            {% elif ansible_domain == 'eu-west-2.compute.internal' -%}
+              DC2
+            {% else -%}
+              DC3
+            {% endif %}
 
       - name: dc
         debug:
@@ -503,4 +508,34 @@ Selection constructs in jinja
   {% ... %} statements
   {{ ... }} expressions
   {# ... #} comments
+
+
+Delegation, local actions, and pauses
+-------------------------------------
+I'm not really comforatable with the example in this
+section, so I should read the docs, instead.
+
+https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_delegation.html
+
+::
+
+  ---
+  - hosts: webservers
+    serial: 5
+
+    tasks:
+      - name: Take out of load balancer pool
+        ansible.builtin.command: /usr/bin/take_out_of_pool {{ inventory_hostname }}
+        delegate_to: 127.0.0.1
+
+      - name: Actual steps would go here
+        ansible.builtin.yum:
+          name: acme-web-stack
+          state: latest
+
+      - name: Add back to load balancer pool
+        ansible.builtin.command: /usr/bin/add_back_to_pool {{ inventory_hostname }}
+        delegate_to: 127.0.0.1
+
+I plan to revisit this and find some executable examples.
 
