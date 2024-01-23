@@ -415,6 +415,12 @@ Generally, I would prefer to use roles, but import/include may be useful some da
 
 Conditionals - if/then/when
 ---------------------------
+::
+
+  - name: Run with items greater than 5
+    ansible.builtin.command: echo {{ item }}
+    loop: [ 0, 2, 4, 6, 8, 10 ]
+    when: item > 5
 
 The when keywords
 ^^^^^^^^^^^^^^^^^
@@ -512,10 +518,12 @@ Selection constructs in jinja
 
 Delegation, local actions, and pauses
 -------------------------------------
-I'm not really comforatable with the example in this
-section, so I should read the docs, instead.
-
 https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_delegation.html
+
+Take a box out of the load balancer pool,
+update it, and then return it to the pool.
+The argument to ``delegate_to`` is an ip
+or hostname to perform the task on.
 
 ::
 
@@ -524,18 +532,119 @@ https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_delegation.html
     serial: 5
 
     tasks:
-      - name: Take out of load balancer pool
+      - name: Take out of load balancer pool.
         ansible.builtin.command: /usr/bin/take_out_of_pool {{ inventory_hostname }}
-        delegate_to: 127.0.0.1
+        delegate_to: {{ lb_endpoint }}
 
-      - name: Actual steps would go here
+      - name: Actual steps would go here.
         ansible.builtin.yum:
           name: acme-web-stack
           state: latest
 
-      - name: Add back to load balancer pool
+      - name: Add back to load balancer pool.
         ansible.builtin.command: /usr/bin/add_back_to_pool {{ inventory_hostname }}
-        delegate_to: 127.0.0.1
+        delegate_to: {{ lb_endpoint }}
 
-I plan to revisit this and find some executable examples.
+If you're delegating to localhost, Ansible has a
+shorthand you can use, ``local_action``.
+
+.. TODO Make sure you're using local_action correctly, look for examples
+::
+
+  - name: Update local repo on host machine
+    local_action:
+      module: git
+      src: https://github.com/kingparra/hpfp
+      dest: ~/Projects/hpfp
+
+Pausing playbook execution with ``wait_for``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
+
+    - name: Wait for web server to start
+      local_action:
+        module: wait_for
+        host: "{{ inventory_hostname }}"
+        port: "{{ webserver_port }}"
+        delay: 10
+        timeout: 300
+        state: started
+
+Running an entire playbook locally
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
+
+  $ ansible-playbook playbook.yaml --connection=local
+
+
+Prompts
+-------
+Prompts are a simple way to gather user-specific
+information, but in most cases, you should avoid
+them.
+
+::
+
+  ---
+  - hosts: all
+    vars_prompt:
+      - name: share_user
+        prompt: What is your network username?
+
+Useful options:
+
+* ``private`` disables echo
+* ``default`` set def val
+* ``confirm`` force user to enter text twice
+
+
+Tags
+----
+::
+
+  - name: Notify on completion.
+    local_action:
+      module: osx_say
+      msg: "{{inventory_hostname}} is finished!"
+      voice: Zarvox
+    tags:
+      - notifications
+      - say
+
+  $ ansible-playbook playbook.yaml --tag notifications
+
+  $ ansible-playbook playbook.yaml --skip-tags say
+
+
+Blocks
+------
+If you want to perform a series of tasks with one set
+of task parameters (with_items, when, become) applied
+blocks are quite handy.
+
+::
+
+  - name: Install and configure apache on RHEL/CentOS hosts.
+    block:
+      - dnf: name=httpd state=present
+      - template: src=httpd.conf.j2 dest=/etc/httpd/conf/httpd.conf
+      - service: name=httpd state=started enabled=yes
+    when: ansible_os_family == 'RedHat'
+    become: yes
+
+They're also useful to handle task failures.
+
+::
+
+  - block:
+      - name: Script to connect the app to a monitoring service
+        script: monitoring-connect.sh
+    rescue:
+      - name: This will only run in case of an error in the block.
+        debug: msg="There was an error in the block."
+    always:
+      - name: This will always run, no matter what.
+        debug: msg="This always executes."
+
+Looks like a try/except/else/finally block, huh?
 
