@@ -71,7 +71,8 @@ called.
 
 One use case for include is looping. When a loop is
 used with an include, the included tasks or roles will
-be executed once for each item in the loop.
+be executed once for each item in the loop, and it
+can see any variables introduced by the loop iteration.
 
 Prefer ``import_tasks`` over ``include_tasks`` where possible.
 
