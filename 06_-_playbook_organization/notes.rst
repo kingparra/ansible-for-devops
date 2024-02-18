@@ -197,4 +197,120 @@ Contents of ``nodejs-app/playbook.yml``::
 In the output of ``ansible-playbook``, each task from
 the nodejs role will be prefixed with the role name.
 
+You can change roles behavour by supplying it with
+variables, either as a playbook-wide (vars_files, vars)
+or task-specific way.
 
+Here's how to pass parameter values (arguments) for a
+particular call to a role.
+
+::
+
+  roles:
+
+    - { role: nodejs, varname: value }
+
+Since Ansible version 2.11, you can add input
+validation of arguments to your roles. The
+specification is defined in ``meta/argument_specs.yml``.
+
+
+Organizing more complex and cross-platform roles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+All you need is ``main.yml``, but you can ``include``
+other files from it to modularize the playbook.
+
+
+Working with other peoples roles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+You can download roles with ``ansible-galaxy role
+install $rolename``.
+
+Another way is to use a requirements file. Here's what
+that looks like:
+
+::
+
+  # requirements.yml
+  ---
+  roles:
+
+    - name: geerlingguy.firewall
+
+    - name: geerlingguy.php
+      version: 4.3.1
+
+    # from GitHub
+    - src: https://github.com/geerlingguy/ansible-role-passenger
+      name: passenger
+      version: 2.0.0
+
+    # from a web server, with a custom name
+    - src: https://www.example.com/ansible/roles/my-role-name.tar.gz
+      name: my-role
+
+Once you have a ``requirements.yml`` file in the
+projects root, you can use this command to install all
+of the roles listed in it:
+
+::
+
+  ansible-galaxy install -r requirements.yml
+
+
+Where does Ansible search for roles?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Collections
+* ./roles
+* roles_path
+* ./
+
+
+How to call roles
+^^^^^^^^^^^^^^^^^
+Using ``include_role`` directive in a task::
+
+  ---
+  - hosts: webservers
+    tasks:
+      - name: Print a message
+        ansible.builtin.debug:
+          msg: "this task runs before the example role"
+
+      - name: Include the example role
+        include_role:
+          name: example
+        when: "ansible_facts['os_family'] == 'RedHat'"
+
+      - name: Print a message
+        ansible.builtin.debug:
+          msg: "this task runs after the example role"
+
+Using the ``import_role`` directive in a task::
+
+  ---
+  - hosts: webservers
+    tasks:
+      - name: Print a message
+        ansible.builtin.debug:
+          msg: "before we run our role"
+
+      - name: Import the example role
+        import_role:
+          name: example
+
+      - name: Print a message
+        ansible.builtin.debug:
+          msg: "after we ran our role"
+
+Using the ``roles`` section of a playbook::
+
+  ---
+  - hosts: webservers
+    pre_tasks:
+      ...
+    roles:
+      - { role: foo, message: "first" }
+      - { role: foo, message: "second" }
+    tasks:
+      ...
